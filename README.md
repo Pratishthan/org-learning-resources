@@ -1,5 +1,4 @@
 # org-learning-resources
-## Index
 
 # File Index
 
