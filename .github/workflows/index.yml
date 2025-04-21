@@ -1,4 +1,4 @@
-name: List Repositories in README
+name: List Files in README
 
 on:
   push:
@@ -7,38 +7,36 @@ on:
   workflow_dispatch:
 
 jobs:
-  list-repos:
+  list-files:
     runs-on: ubuntu-latest
     
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v3
 
-      - name: Get Repositories from the organization
-        id: get_repos
+      - name: List all files in the repository
+        id: list_files
         run: |
-          # Replace with your organization name
-          ORG_NAME="Pratishthan"
-          
-          # Fetch all repository names in the organization
-          REPOS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/orgs/$ORG_NAME/repos?per_page=100" | \
-            jq -r '.[].name')
+          # List all files in the repository (including files in subdirectories)
+          FILES=$(find . -type f)
 
-          echo "::set-output name=repos::$(echo "$REPOS" | tr '\n' ' ')"
+          # Create an initial index for the README file
+          INDEX_CONTENT="# File Index\n\n"
 
-      - name: Generate Index for README
-        run: |
-          # Fetch the repositories
-          REPOS="${{ steps.get_repos.outputs.repos }}"
-          
-          # Start the markdown content for the index
-          INDEX_CONTENT="# List of Repositories\n\n"
-
-          # Loop through repositories and create the markdown list
-          for REPO in $REPOS; do
-            INDEX_CONTENT="$INDEX_CONTENT- [$REPO](https://github.com/Pratishthan/$REPO)\n"
+          # Loop through the files and create a markdown list
+          for FILE in $FILES; do
+            # Escape spaces in file names
+            FILE_NAME=$(echo $FILE | sed 's/ /%20/g')
+            INDEX_CONTENT="$INDEX_CONTENT- [$FILE_NAME]($FILE)\n"
           done
+
+          # Set output for the index content
+          echo "::set-output name=index_content::$INDEX_CONTENT"
+
+      - name: Update README with File Index
+        run: |
+          # Fetch the index content
+          INDEX_CONTENT="${{ steps.list_files.outputs.index_content }}"
 
           # Append the content to the README file
           echo "$INDEX_CONTENT" > README.md
@@ -48,5 +46,5 @@ jobs:
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
           git add README.md
-          git commit -m "Update repository index in README"
+          git commit -m "Update file index in README"
           git push
