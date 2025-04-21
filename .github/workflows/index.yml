@@ -1,4 +1,4 @@
-name: List Files in README
+name: List Files in README (Exclude README, .git, and Workflow Files)
 
 on:
   push:
@@ -14,18 +14,18 @@ jobs:
       - name: Checkout the repository
         uses: actions/checkout@v3
 
-      - name: List all files in the repository
+      - name: List all files in the repository (excluding README.md, .git, and workflows)
         id: list_files
         run: |
-          # List all files in the repository (including files in subdirectories)
-          FILES=$(find . -type f)
+          # List all files in the repository, excluding README.md, .git, and .github/workflows
+          FILES=$(find . -type f ! -name 'README.md' ! -path './.git/*' ! -path './.github/*')
 
           # Create an initial index for the README file
           INDEX_CONTENT="# File Index\n\n"
 
           # Loop through the files and create a markdown list
           for FILE in $FILES; do
-            # Escape spaces in file names
+            # Escape spaces in file names for markdown compatibility
             FILE_NAME=$(echo $FILE | sed 's/ /%20/g')
             INDEX_CONTENT="$INDEX_CONTENT- [$FILE_NAME]($FILE)\n"
           done
