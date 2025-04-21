@@ -37,7 +37,6 @@ jobs:
       - name: Update README with File Index
         run: |
           echo "# org-learning-resources" > README.md
-          echo "## Index" >> README.md
           echo "" >> README.md
           echo "${{ steps.list_files.outputs.index_content }}" >> README.md
 
