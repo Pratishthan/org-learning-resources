@@ -18,7 +18,7 @@ jobs:
         id: list_files
         run: |
           # List all files in the repository, excluding README.md, .git, and .github/workflows
-          FILES=$(find . -type f ! -name 'README.md' ! -path './.git/*' ! -path './.github/*')
+          FILES=$(find . -type f ! -name 'README.md' ! -path './.git/*' ! -path './.github/*' ! -path 'LICENSE')
 
           # Create an initial index for the README file
           INDEX_CONTENT="# File Index\n\n"
