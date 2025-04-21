@@ -9,43 +9,42 @@ on:
 jobs:
   list-files:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v3
 
-      - name: List all files in the repository (excluding README.md, .git, and workflows)
+      - name: List all files (excluding README.md, .git, .github, LICENSE)
         id: list_files
         run: |
-          # List all files in the repository, excluding README.md, .git, and .github/workflows
-          FILES=$(find . -type f ! -name 'README.md' ! -path './.git/*' ! -path './.github/*' ! -path 'LICENSE')
+          echo "index_content<<EOF" >> $GITHUB_OUTPUT
 
-          # Create an initial index for the README file
-          INDEX_CONTENT="# File Index\n\n"
+          echo "# File Index" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
 
-          # Loop through the files and create a markdown list
-          for FILE in $FILES; do
-            # Escape spaces in file names for markdown compatibility
-            FILE_NAME=$(echo $FILE | sed 's/ /%20/g')
-            INDEX_CONTENT="$INDEX_CONTENT- [$FILE_NAME]($FILE)\n"
+          find . -type f \
+            ! -name 'README.md' \
+            ! -name 'LICENSE' \
+            ! -path './.git/*' \
+            ! -path './.github/*' |
+          while read FILE; do
+            ESCAPED=$(echo "$FILE" | sed 's/ /%20/g' | sed 's|^\./||')
+            echo "- [$ESCAPED]($ESCAPED)" >> $GITHUB_OUTPUT
           done
 
-          # Set output for the index content
-          echo "::set-output name=index_content::$INDEX_CONTENT"
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Update README with File Index
         run: |
-          # Fetch the index content
-          INDEX_CONTENT="${{ steps.list_files.outputs.index_content }}"
           echo "# org-learning-resources" > README.md
-          echo "## Index : " >> README.md
-          # Append the content to the README file
-          echo "- $INDEX_CONTENT" >> README.md
+          echo "## Index" >> README.md
+          echo "" >> README.md
+          echo "${{ steps.list_files.outputs.index_content }}" >> README.md
 
-      - name: Commit the updated README
+      - name: Commit and Push Updated README
         run: |
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
           git add README.md
-          git commit -m "Update file index in README"
+          git diff --cached --quiet || git commit -m "Update file index in README"
           git push
