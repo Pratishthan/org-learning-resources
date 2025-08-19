@@ -1,19 +1,25 @@
-# 🚀 Learning Roadmap
-
-## 📌 Topics to Cover
-- Node.js
-- Redis
-- RabbitMQ
-- Node-RED
-- LoopBack
-- SQL
-- Bash
-- Regex
-- Payments (oe-cloud)
+# 🚀 Learning Roadmap ( ~2-3 Weeks )
+ 
 
 ---
 
-## 📌 Node.js Core
+## 📌 Topics & Timeline
+- **Week 1**
+  - Day 1–2: Node.js Core
+  - Day 3–6: Foundations (SQL, Bash, Regex)
+- **Week 2**
+  - Day 7–8: Redis
+  - Day 9–10: RabbitMQ
+  - Day 11–12: Node-RED
+- **Week 3**
+  - Day 13–14: LoopBack 3
+  - Day 15: oe-cloud
+  - Day 16: Payments 
+
+---
+
+
+## 📌 Node.js Core (4 days)
 - [ ] Understand event loop, async (callbacks, promises, async/await)
 - [ ] Build REST API with Express
 - [ ] Handle file I/O and error handling
@@ -28,7 +34,7 @@
 
 ---
 
-## 📌 Foundations
+## 📌 Foundations (2 days)
 - [ ] **SQL DB**
   - [ ] CRUD operations, joins, indexes, transactions
   - [ ] **Project:** To-Do App with SQL DB  
@@ -47,7 +53,8 @@
 
 ---
 
-## 📌 Redis
+
+## 📌 Redis (2 days)
 - [ ] Understand Redis concepts & redis-cli
 - [ ] Connect Node.js to Redis
 - [ ] Use Redis for caching
@@ -60,7 +67,7 @@
 
 ---
 
-## 📌 Messaging Systems (RabbitMQ)
+## 📌 Messaging Systems (RabbitMQ) (2 days)
 - [ ] Understand exchange, queue, routing key
 - [ ] Implement producer-consumer model with Node.js
 - [ ] **Projects**
@@ -74,7 +81,7 @@
 
 ---
 
-## 📌 Node-RED
+## 📌 Node-RED (2 days)
 - [ ] Learn flows & nodes (how to create custom nodes and flows)
 - [ ] **Projects**
   - [ ] Convert the Weather API + RabbitMQ project into a Node-RED flow  
@@ -85,7 +92,7 @@
 
 ---
 
-## 📌 LoopBack 3 (LB)
+## 📌 LoopBack 3 (LB) (2 days)
 - [ ] Understand LoopBack framework basics (models, datasources, repositories)
 - [ ] Learn to create APIs with LoopBack CLI
 - [ ] Read about Hooks, Middleware, and Remote Methods
@@ -94,18 +101,25 @@
   - [ ] Recreate the **Weather API + Redis Caching** in LoopBack  
 
 ### 📚 Learning Resources
-- [LoopBack 3 Documentation](https://loopback.io/doc/en/lb3/) 
+- [LoopBack 3 Documentation](https://loopback.io/doc/en/lb3/)  
 
 ---
 
-## 📌 Payments (oe-cloud)
+## 📌 oe-cloud (1 day)
 - [ ] What is oe-cloud: [oe-cloud GitHub](https://github.com/EdgeVerve/oe-cloud)  
 - [ ] Integrate Redis, RabbitMQ, SQL, LoopBack within payments app  
+
+### 📚 Learning Resources
+- [oe-cloud GitHub](https://github.com/EdgeVerve/oe-cloud)  
+
+---
+
+## 📌 Payments
 - [ ] Bring outbound app up:
-    - Clone repo `oepy-outbound-payments`  
+    - Clone `oepy-outbound-payments` git repo (https://github.com/Pratishthan/oepy-outbound-payment-all/tree/ebrt1) 
     - Checkout branch `ebrt1` *(confirm correct branch)*  
     - `yarn install`  
-    - Update env variables (Redis, MQ, DB) in start file  
+    - Update env variables (Redis, MQ, DB) in start file
     - Run `node pushFlow.js` *(common flow: oepy → scheme)*  
     - Start with `sh nohup_pg_start_with_migrate_outbound.sh`  
 - [ ] Understand different services involved in payments  
@@ -116,8 +130,4 @@
 - [ ] PACS messages and MsgHub  
 
 ### 📚 Learning Resources
-- [oe-cloud GitHub](https://github.com/EdgeVerve/oe-cloud)  
 - KT (Knowledge Transfer) sessions to be scheduled for specific modules  
-
----
-
