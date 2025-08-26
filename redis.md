@@ -43,34 +43,6 @@
 
 ---
 
-## 🧠 How Redis Works Internally (High-Level Mental Model)
-
-- **Single-Threaded Event Loop**  
-  Redis uses a single thread to process commands sequentially, ensuring simplicity and predictability.
-
-- **In-Memory Data Storage**  
-  All operations are performed in RAM — this makes Redis incredibly fast but limits data size to available memory.
-
-- **Optional Persistence**  
-  Choose between or combine:
-  - **RDB (Snapshotting):** Periodically saves the full dataset.
-  - **AOF (Append-Only File):** Logs every operation for durability.
-
-- **Replication**  
-  Redis supports replication, where one master node replicates its data to multiple replica nodes for:
-  - High Availability
-  - Read scalability
-
-- **Clustering**  
-  Redis Cluster partitions data across multiple nodes using **hash slot sharding**, allowing it to handle:
-  - Very large datasets
-  - Automatic failover
-  - Horizontal scalability
-
----
-
-
-
 
 # 🚀 Setting Up Redis in Node.js
 
