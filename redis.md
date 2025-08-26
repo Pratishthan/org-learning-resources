@@ -132,7 +132,7 @@ The EX option in redis.set() defines key expiration in seconds.
 process.exit(0) ensures the script exits after completing asynchronous operations.
 
 
-# Redis Core Data Structures - Session 1 (90 min)
+# Redis Core Data Structures - Session 1 
 
 ## Table of Contents
 - [1.1 Strings](#11-strings-incl-counters--ttl)
