@@ -310,4 +310,427 @@ Key points:
 
 ---
 
+Perfect 👍 Let’s now deep-dive into **Session 3: Exchanges in RabbitMQ**.
+This is a very important session because **exchanges are the “routing brains”** of RabbitMQ — they decide **how messages published by producers end up in one or more queues**.
 
+---
+
+# 📘 **Session 3: Exchanges in RabbitMQ**
+
+---
+
+## 1. **Why Exchanges?**
+
+* In Session 1 & 2 we saw **queues**: a simple container where messages are sent and consumed.
+* But if producers could only publish directly to queues, that would be limiting:
+
+  * What if the same message needs to go to **multiple consumers**?
+  * What if we need different types of consumers to get different subsets of messages?
+  * What if we want **flexible routing** rules without modifying producers?
+
+That’s where **Exchanges** come in.
+
+👉 In RabbitMQ, producers **never publish directly to queues**. They publish to an **exchange**, and the exchange decides which queue(s) the message should go to (based on binding rules).
+
+---
+
+## 2. **How it Works (Flow)**
+
+1. **Producer** → sends a message to an **Exchange**.
+2. **Exchange** → applies its routing logic using **bindings** and possibly **routing keys**.
+3. **Queue(s)** → receive the message if the routing rules match.
+4. **Consumers** → consume messages from those queues.
+
+Think of an **Exchange** like a *post office sorting center*:
+
+* You don’t deliver letters straight into people’s houses (queues).
+* You deliver them to the post office (exchange).
+* The post office sorts them based on addresses/rules and delivers them to the right mailboxes (queues).
+
+---
+
+## 3. **Types of Exchanges**
+
+RabbitMQ provides **four built-in exchange types** (each with different routing strategies):
+
+### (a) **Direct Exchange**
+
+* Routes messages to queues **based on exact matching of a routing key**.
+* Each queue is **bound** to the exchange with a binding key.
+* When a message is published with a routing key, the exchange delivers it to the queue(s) with a matching binding key.
+```js
+const exchange = 'direct_logs';
+await channel.assertExchange(exchange, 'direct', { durable: false });
+
+channel.publish(exchange, 'error', Buffer.from('Error log'));
+
+```
+📌 Example:
+
+* Queue1 bound with key = `error`
+* Queue2 bound with key = `info`
+* Producer publishes message with routing key `error` → goes to Queue1.
+
+👉 Useful for **point-to-point routing** or selective consumption.
+
+---
+
+### (b) **Fanout Exchange**
+
+* Ignores routing keys completely.
+* Sends the message to **all queues bound to it** (broadcast).
+* Think of it as a **loudspeaker**.
+
+📌 Example:
+
+* Three queues bound to a fanout exchange.
+* Producer sends one message → all three queues receive a copy.
+
+👉 Useful for **pub/sub systems** like notifications, live updates, event broadcasting.
+```js
+const exchange = 'logs';
+await channel.assertExchange(exchange, 'fanout', { durable: false });
+
+channel.publish(exchange, '', Buffer.from('Broadcast message'));
+```
+---
+
+### (c) **Topic Exchange**
+
+* Routes messages to queues based on **pattern matching** with routing keys.
+* The routing key is a string with words separated by dots (e.g., `logs.error.database`).
+* Bindings can use wildcards:
+
+  * `*` (matches exactly one word)
+  * `#` (matches zero or more words)
+
+📌 Example:
+
+* Queue1 bound with `logs.error.*`
+* Queue2 bound with `logs.#`
+* Message with key `logs.error.database` → goes to both queues.
+
+👉 Useful for **complex routing** like event classification, logging, or multi-service messaging.
+```js
+const exchange = 'topic_logs';
+await channel.assertExchange(exchange, 'topic', { durable: false });
+
+channel.publish(exchange, 'order.created', Buffer.from('New order event'));
+```
+---
+
+### (d) **Headers Exchange**
+
+* Routing happens based on **message headers**, not routing keys.
+* You define a binding with a set of key-value pairs.
+* Messages with matching headers are delivered to that queue.
+
+📌 Example:
+
+* Queue1 bound with `{ format: "pdf", type: "report" }`
+* If a message has these headers, it goes to Queue1.
+
+👉 Useful when **metadata in headers** decides routing rather than a string routing key. Less common but powerful.
+```js
+const exchange = 'headers_logs';
+await channel.assertExchange(exchange, 'headers', { durable: false });
+
+channel.publish(exchange, '', Buffer.from('Message with headers'), {
+  headers: { severity: 'high', format: 'json' }
+});
+```
+---
+
+## 4. **Default Exchange**
+
+* RabbitMQ has a built-in **default direct exchange** (`""` — empty string as the name).
+* Any message sent to this exchange with a routing key equal to a queue’s name is delivered directly to that queue.
+* That’s why in Session 1 we could do `channel.sendToQueue('queue', msg)` without declaring an exchange — it was using the default one.
+
+---
+
+## 5. **Bindings and Routing Keys**
+
+### What are Bindings?
+
+* A **binding** connects a queue to an exchange.
+* It defines the **rule** (routing key or pattern) that decides if a message from that exchange should be delivered to that queue.
+
+### Routing Key
+
+* A **routing key** is a string set by the producer when publishing.
+* Exchanges (depending on type) use the routing key to determine where the message should go.
+
+**Example:**
+
+```js
+await channel.assertExchange('direct_logs', 'direct', { durable: false });
+const q = await channel.assertQueue('', { exclusive: true });
+
+// bind queue to exchange with specific keys
+await channel.bindQueue(q.queue, 'direct_logs', 'info');
+await channel.bindQueue(q.queue, 'direct_logs', 'error');
+
+// producer side
+channel.publish('direct_logs', 'info', Buffer.from('This is an info log'));
+```
+
+Here:
+
+* Only messages with routing key `info` or `error` reach this queue.
+* If producer publishes with `debug`, this queue won’t receive it.
+
+---
+
+## 6. **Publish/Subscribe Pattern**
+
+### Concept
+
+* A common pattern where **one producer sends a message that multiple consumers receive**.
+* Implemented with a **fanout exchange**.
+* All bound queues get a copy of the message.
+
+### Use Case
+
+* Event-driven systems: logging, monitoring, notifications, real-time updates.
+
+**Example (Node.js):**
+
+```js
+const exchange = 'logs';
+await channel.assertExchange(exchange, 'fanout', { durable: false });
+
+// declare a queue for this consumer
+const q = await channel.assertQueue('', { exclusive: true });
+
+// bind queue to the fanout exchange
+await channel.bindQueue(q.queue, exchange, '');
+
+// consumer
+channel.consume(q.queue, (msg) => {
+  console.log(" [x] Received:", msg.content.toString());
+}, { noAck: true });
+
+// producer
+channel.publish(exchange, '', Buffer.from('System started!'));
+```
+
+---
+
+Great 👍 Let’s now dive deep into **Session 4: Reliability in RabbitMQ**.
+This session builds on the basics (Session 2) and advanced routing (Session 3) by focusing on **making RabbitMQ reliable** for production systems.
+
+---
+
+# **Session 4: Reliability in RabbitMQ **
+
+Reliability means **no message is lost**, and **processing happens exactly as intended**, even if there are failures.
+
+In this session, we cover:
+
+1. Message Acknowledgments (`ack`, `nack`, `reject`)
+2. Dead Letter Queues (DLQ)
+3. Message TTL (time-to-live)
+4. Publisher Confirms
+5. Handling Consumer Failures
+
+---
+
+## **1. Message Acknowledgments**
+
+### Why Acknowledgments?
+
+* By default, RabbitMQ delivers messages to consumers **and assumes success immediately**.
+* If a consumer crashes while processing, messages may be lost.
+* Acknowledgments (`ack`) tell RabbitMQ:
+
+  * ✅ message was processed successfully → remove from queue
+  * ❌ message failed → requeue or discard
+
+### Types of Acknowledgments:
+
+1. **Manual Acknowledgment (`ack`)**
+
+   * Explicitly confirm message was processed.
+   * Example: After writing to DB, send `ack`.
+   * Node.js:
+
+     ```js
+     channel.consume('task_queue', (msg) => {
+       console.log(" [x] Received:", msg.content.toString());
+       setTimeout(() => {
+         console.log(" [x] Done");
+         channel.ack(msg);  // acknowledge only after processing
+       }, 2000);
+     }, { noAck: false });
+     ```
+
+2. **Negative Acknowledgment (`nack`)**
+
+   * Tells RabbitMQ that processing **failed**.
+   * Options:
+
+     * `requeue: true` → put message back in the same queue
+     * `requeue: false` → discard message or send to **DLQ**
+   * Example:
+
+     ```js
+     try {
+       processMessage(msg);
+       channel.ack(msg);
+     } catch (error) {
+       channel.nack(msg, false, true); // requeue the message
+     }
+     ```
+
+3. **Reject**
+
+   * Like `nack` but only for a **single message** (not multiple).
+   * Example: `channel.reject(msg, false);`
+
+---
+
+## **2. Dead Letter Queues (DLQ)**
+
+### Concept
+
+* A **DLQ** is a special queue for messages that **cannot be processed**.
+* Reasons messages go to DLQ:
+
+  1. Consumer rejects (`nack` with `requeue=false`)
+  2. Message TTL expired
+  3. Queue length limit exceeded
+
+### Why DLQ is important?
+
+* Prevents “poison messages” (bad data that keeps failing) from blocking processing.
+* Allows debugging and monitoring of failed messages.
+
+### Node.js Example:
+
+```js
+// Dead-letter exchange
+await channel.assertExchange('dlx', 'direct', { durable: true });
+await channel.assertQueue('dead_letter_queue', { durable: true });
+await channel.bindQueue('dead_letter_queue', 'dlx', 'failed');
+
+// Normal queue with DLQ settings
+await channel.assertQueue('task_queue', {
+  durable: true,
+  deadLetterExchange: 'dlx',
+  deadLetterRoutingKey: 'failed'
+});
+
+// If consumer rejects, message goes to DLQ
+```
+
+---
+
+## **3. Message TTL (Time-To-Live)**
+
+### Concept
+
+* A message can have a **time-to-live (TTL)**, after which it is considered “expired.”
+* Expired messages → removed or sent to DLQ (if configured).
+
+### Why TTL?
+
+* Useful for:
+
+  * Temporary tasks (like session cleanup).
+  * Expiring cache-like messages.
+  * Avoiding queues growing infinitely with outdated data.
+
+### Two Types of TTL:
+
+1. **Queue-level TTL** → applies to all messages in the queue.
+
+   ```js
+   await channel.assertQueue('temp_queue', { messageTtl: 10000 }); // 10s
+   ```
+
+2. **Per-message TTL** → set when publishing.
+
+   ```js
+   channel.sendToQueue('temp_queue', Buffer.from('Expires soon'), {
+     expiration: 5000 // 5s
+   });
+   ```
+
+---
+
+## **4. Publisher Confirms**
+
+### The Problem
+
+* When producers publish messages, how do they **know the message was actually stored in RabbitMQ**?
+* If the broker crashes before saving, messages can vanish.
+
+### Solution → Publisher Confirms
+
+* With **confirm channels**, producers get an **ack/nack** back from RabbitMQ.
+* Ensures **at least once delivery**:
+
+  * `ack` → broker persisted message
+  * `nack` → broker failed, try again
+
+### Node.js Example:
+
+```js
+const confirmChannel = await connection.createConfirmChannel();
+
+confirmChannel.sendToQueue('task_queue', Buffer.from('Important message'), {}, (err, ok) => {
+  if (err) {
+    console.error("Message NOT confirmed!", err);
+  } else {
+    console.log("Message confirmed by RabbitMQ");
+  }
+});
+```
+
+This way, the producer knows whether to retry or proceed.
+
+---
+
+## **5. Handling Consumer Failures**
+
+### Why?
+
+* Consumers can crash, disconnect, or fail to process messages correctly.
+* RabbitMQ provides mechanisms to handle these failures gracefully.
+
+### Strategies:
+
+1. **Manual Acknowledgments**
+
+   * Don’t `ack` until message is fully processed.
+   * If consumer dies, RabbitMQ re-delivers the message to another consumer.
+
+2. **Retry Mechanism**
+
+   * Consumers can `nack` and requeue a message a few times before sending it to DLQ.
+   * Example:
+
+     ```js
+     if (msg.fields.deliveryTag < 3) {
+       channel.nack(msg, false, true); // retry
+     } else {
+       channel.nack(msg, false, false); // move to DLQ
+     }
+     ```
+
+3. **Dead Letter Queues**
+
+   * Store failed messages for later inspection, instead of retrying infinitely.
+
+4. **Consumer Prefetch**
+
+   * Use `channel.prefetch(1)` to limit the number of unacked messages per consumer.
+   * Prevents one slow worker from being overloaded.
+   * Example:
+
+     ```js
+     channel.prefetch(1);
+     ```
+
+---
