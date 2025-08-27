@@ -172,15 +172,142 @@ Explanation:
 4. In the Management UI, you can see the queue "hello" and observe the message count before and after consumption.
 
 ---
+ # Session 2 — Work Queues (Task distribution) & Fair Dispatch — explained in great detail
 
-## 7. Hands-on Exercise for Participants
 
-* Change the producer to send multiple messages in a loop (e.g., 5 messages).
-* Observe how the consumer processes them one by one.
-* Open the RabbitMQ UI and watch the queue length increase and decrease.
-* Stop the consumer and send messages again — notice how the queue retains the messages until the consumer is restarted.
+
+## 1) Core concepts (detailed)
+
+**Work queue**: A queue where producers push tasks (jobs) and multiple worker processes consume tasks and perform work. The broker holds tasks until a worker acknowledges successful processing.
+
+**Durable queue** (`durable: true`): The queue definition survives broker restart. Alone it’s not enough to persist messages — messages must be published as persistent too.
+
+**Persistent messages** (`{ persistent: true }` / `delivery_mode=2`): Mark messages so the broker will try to write them to disk. Combine with durable queue for persistence across restarts.
+
+**Manual acknowledgements** (`noAck:false`, `ch.ack(msg)`): Consumer tells the broker when a message has been successfully processed. Until acked, the message is “unacked” and will not be removed. If the consumer dies, the broker requeues the unacked message and delivers it to another consumer.
+
+**Prefetch (QoS)** (`ch.prefetch(n)`): Limits how many unacknowledged messages a consumer can have at a time. `prefetch(1)` is the classic *fair dispatch* setting — the broker will not send a new message to the consumer until it acks the previous one. This prevents one fast producer from overwhelming a single slow worker.
+
+**Redelivered flag**: When a message is re-delivered (because it was unacked and the consumer died), `msg.fields.redelivered` is true. Useful to detect retries/poison messages.
+
+**At-least-once delivery**: With acks and re-deliveries, RabbitMQ guarantees at-least-once delivery — meaning workers must be idempotent because the same message could be delivered multiple times.
 
 ---
 
+## 3) Example code — robust production-style producer and worker
+
+### Producer (durable queue + persistent messages + confirm channel)
+
+```js
+// producer.js
+const amqp = require('amqplib');
+
+async function sendTasks(tasks = []) {
+  const conn = await amqp.connect('amqp://localhost');
+  const ch = await conn.createConfirmChannel();
+
+  const queue = 'task_queue';
+  // Durable queue: survives broker restart
+  await ch.assertQueue(queue, { durable: true });
+
+  for (const task of tasks) {
+    const content = Buffer.from(JSON.stringify(task));
+    // Mark message persistent
+    ch.sendToQueue(queue, content, { persistent: true }, (err, ok) => {
+      if (err) console.error('Publish failed for task', task, err);
+      else console.log('Published task', task.id || '(no id)');
+    });
+  }
+
+  // Wait for all confirms before closing
+  await ch.waitForConfirms();
+  await ch.close();
+  await conn.close();
+}
+
+sendTasks([
+  { id: 1, type: 'resize', image: 'a.jpg' },
+  { id: 2, type: 'resize', image: 'b.jpg' },
+]).catch(console.error);
+```
+
+Key points:
+
+* `createConfirmChannel()` + `waitForConfirms()` ensures the broker acknowledged persistence. This reduces risk of losing messages due to publisher crash.
+* Queue is declared durable; messages are persistent.
+
+---
+
+### Worker (prefetch, manual ack, safe error handling)
+
+```js
+// worker.js
+const amqp = require('amqplib');
+
+async function startWorker(concurrency = 1) {
+  const conn = await amqp.connect('amqp://localhost');
+  const ch = await conn.createChannel();
+
+  const queue = 'task_queue';
+  await ch.assertQueue(queue, { durable: true });
+
+  // Fair dispatch: limit unacked messages per worker
+  ch.prefetch(concurrency);
+
+  console.log('Worker started, concurrency:', concurrency);
+
+  ch.consume(queue, async (msg) => {
+    if (msg === null) return;
+    const content = JSON.parse(msg.content.toString());
+    const redelivered = msg.fields.redelivered;
+
+    try {
+      console.log('Received task', content.id, 'redelivered?', redelivered);
+      // >>> DO WORK HERE (simulate with async function)
+      await doWork(content); // your async job handler
+
+      // On success:
+      ch.ack(msg);
+      console.log('Acked', content.id);
+    } catch (err) {
+      console.error('Processing error for', content.id, err);
+
+      // Decide whether to requeue or send to DLQ.
+      // Example: if transient error, requeue; if permanent, nack and drop/reroute.
+      const shouldRequeue = decideRequeue(err, msg);
+
+      // nack with requeue true/false
+      ch.nack(msg, false, shouldRequeue);
+      console.log('Nacked', content.id, 'requeue=', shouldRequeue);
+    }
+  }, { noAck: false });
+}
+
+async function doWork(task) {
+  // Example: simulate I/O-bound work
+  await new Promise(res => setTimeout(res, 1000));
+  if (task.fail) throw new Error('simulated failure');
+  return true;
+}
+
+function decideRequeue(err, msg) {
+  // Simple heuristic: if redelivered already (retry happened), don't requeue
+  // to avoid infinite retry loops; send to DLQ instead (handled by routing).
+  if (msg.fields.redelivered) return false;
+  // otherwise requeue once
+  return true;
+}
+
+startWorker(1).catch(console.error);
+```
+
+Key points:
+
+* `ch.prefetch(concurrency)` limits unacked messages. If `concurrency` is 1 (classic fair dispatch), the broker won't deliver another message to this worker until it acked the current one.
+* Worker acknowledges only after successful processing.
+* On error, worker can `nack` and decide to requeue (true) or not (false). If not requeued, the message is re-routed to dead-letter exchange (if configured) or dropped.
+* Use `msg.fields.redelivered` to detect retries.
+
+---
 
 
