@@ -2,6 +2,7 @@
 
 # File Index
 
+- [RabbitMQ.md](RabbitMQ.md)
 - [Kubernetes.md](Kubernetes.md)
 - [payments/dark-store-flow.png](payments/dark-store-flow.png)
 - [payments/install%20nvm](payments/install%20nvm)
