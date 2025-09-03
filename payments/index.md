@@ -14,7 +14,8 @@
 - **Week 3**
   - Day 13–14: LoopBack 3
   - Day 15: oe-cloud
-  - Day 16: Payments 
+  - Day 16: Payments
+- Ongoing: [Project](https://github.com/Pratishthan/org-learning-resources/blob/main/payments/project.md)
 
 ---
 
