@@ -4,6 +4,7 @@
 
 - [RabbitMQ.md](RabbitMQ.md)
 - [Kubernetes.md](Kubernetes.md)
+- [redis.md](redis.md)
 - [payments/dark-store-flow.png](payments/dark-store-flow.png)
 - [payments/install%20nvm](payments/install%20nvm)
 - [payments/index.md](payments/index.md)
