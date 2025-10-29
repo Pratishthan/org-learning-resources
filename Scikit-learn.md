@@ -2,6 +2,7 @@
 
 A structured roadmap to master **scikit-learn (sklearn)** — from beginner to expert — including topics, resources, and practice projects.
 
+<img width="1536" height="1024" alt="009c4383-a5c3-416d-b025-74b1e6b93db6" src="https://github.com/user-attachments/assets/e26ead52-d409-4db5-a67b-44f8e93d040d" />
 ---
 
 ## 📅 PHASE 1: Foundation Setup (1 week)
