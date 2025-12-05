@@ -132,6 +132,8 @@ kubectl delete deployment <name>       # Delete deployment
 
 kubectl get svc                         # List services
 kubectl expose deployment nginx --port=80 --type=NodePort  # Expose deployment
+
+kubectl -n <namespace> edit deploy <app name> # to edit deployment script for app
 ```
 
 ## ConfigMaps & Secrets
